@@ -1,0 +1,136 @@
+/*
+ * TCSS 305 - Autumn 2014
+ * Assignment 6 - tetris
+ */
+
+package view;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.util.List;
+import java.util.Observable;
+import java.util.Observer;
+
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
+import javax.swing.JPanel;
+
+import model.AbstractPiece;
+import model.Block;
+import model.Board;
+import model.Piece;
+
+/**
+ * The panel that holds the tetris board.
+ * 
+ * @author Brandon Scholer
+ * @version 1.0
+ */
+@SuppressWarnings("serial")
+public class TetrisPanel extends JPanel implements Observer {
+    
+    /** Default Block size. */
+    private static final int DEFAULT_BLOCK_SIZE = 30;
+    
+    /** Adjustment for BlockSize based on Height. */
+    private static final int ADJUSTMENT = 20;
+    
+    /** Default Border width. */
+    private static final int BORDER_WIDTH = 2;
+    
+    /** Default Dimensions. */
+    private static final Dimension DEFAULT_DIMENSION = new Dimension(300, 600);
+    
+    /** Number of Blocks in a piece. */
+    private static final int BLOCKS = 4;
+    
+    /** Piece to be drawn on board. */
+    private Piece myPiece;
+    
+    /** Frozen Blocks on board.*/
+    private List<Block[]> myFrozenBlocks;
+    
+    /** Determines block size. */
+    private int myBlockSize;
+    
+    /**
+     * Initializes instance fields.
+     */
+    public TetrisPanel() {
+        super();
+        myBlockSize = DEFAULT_BLOCK_SIZE;
+        
+        setup();
+    }
+    
+    /** Sets up the panel that Tetris will be played in. */
+    private void setup() {
+        setPreferredSize(DEFAULT_DIMENSION);
+        setBorder(BorderFactory.createLineBorder(Color.YELLOW, BORDER_WIDTH));
+    }
+
+    /**
+     * Paints the pieces and frozen blocks on the panel.
+     * {@inheritDoc}
+     */
+    @Override
+    public void paintComponent(final Graphics theGraphics) {
+        super.paintComponent(theGraphics);
+        final Graphics2D g2d = (Graphics2D) theGraphics;
+        final Image image = new ImageIcon("support_files/Space.jpg").getImage();
+        g2d.drawImage(image, 0, 0, null);
+        
+        
+        g2d.setColor(((AbstractPiece) myPiece).getBlock().getColor());
+        
+        final int[][] coord = ((AbstractPiece) myPiece).getBoardCoordinates();
+        
+        for (int blocks = 0; blocks < BLOCKS; blocks++) {
+            if (myBlockSize != 0) {
+                g2d.drawImage(((AbstractPiece) myPiece).getBlock().getImage(),
+                              coord[blocks][0] * myBlockSize, 
+                           ((getHeight() / myBlockSize - coord[blocks][1]) - BORDER_WIDTH)
+                           * myBlockSize,
+                           myBlockSize, myBlockSize, Color.BLACK, null);
+            }
+        }
+        
+        int row = myBlockSize;
+        for (final Block[] blocks : myFrozenBlocks) {
+            
+            int column = 0;
+            for (int i = 0; i < blocks.length; i++) {
+                
+                if (!blocks[i].equals(Block.EMPTY)) {
+                    g2d.setColor(blocks[i].getColor());
+                    g2d.drawImage(blocks[i].getImage(), column,
+                                  getHeight() - row, myBlockSize, myBlockSize, null);
+                }
+                column += myBlockSize;
+                
+            }
+            row += myBlockSize;
+        }
+        
+    }
+    
+    /**
+     * Gets the current piece and frozen blocks from the board.
+     * {@inheritDoc}
+     */
+    @Override
+    public void update(final Observable theObservable, final Object theObject) {
+        if ("Board".equals(theObservable.getClass().getSimpleName())) {    
+            final Board tetrisBoard = (Board) theObservable;
+            myBlockSize = getHeight() / ADJUSTMENT;
+            myPiece = (AbstractPiece) tetrisBoard.getCurrentPiece();
+            myFrozenBlocks = (List<Block[]>) tetrisBoard.getFrozenBlocks();
+            repaint();
+        }
+    }
+    
+}
+

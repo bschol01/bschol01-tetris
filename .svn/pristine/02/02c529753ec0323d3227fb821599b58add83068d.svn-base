@@ -1,0 +1,292 @@
+/*
+ * TCSS 305 - Autumn 2014
+ * Assignment 6 - tetris
+ */
+
+package view;
+
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.io.File;
+import java.util.Observable;
+import java.util.Observer;
+
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.Timer;
+
+import model.Board;
+
+/**
+ * Sets up the tetris GUI.
+ * 
+ * @author Brandon Scholer
+ * @version 1.0
+ *
+ */
+public class TetrisFrame implements Observer {
+    
+    /** A Default for checking non-zero. */
+    private static final int DEFAULT = 0;
+    
+    /** Font size for Pause label. */
+    private static final int FONT_SIZE = 36;
+    
+    /** Grid Rows. */
+    private static final int ROW = 1;
+    
+    /** GridLayout columns. */
+    private static final int COLUMN = 2;
+    
+    /** Timer delay. */
+    private static final int DELAY = 750;
+    
+    /**
+     * Frame that holds the GUI.
+     */
+    private final JFrame myFrame;
+    
+    /**
+     * Panel that tetris will be played on.
+     */
+    private final TetrisPanel myTetris;
+    
+    /** Panel on the right side. */
+    private final TetrisRightPanel myRightPanel;
+    
+    /** Timer for game. */
+    private Timer myTimer;
+    
+    /** Board on which Tetris is played. */
+    private final Board myBoard;
+    
+    /** JLabel for the Pause screen. */
+    private final JLabel myPauseLabel;
+    
+    /** The menu bar for the game. */
+    private final TetrisMenu myMenu;
+    
+    /** The key listener for moving the pieces. */
+    private final TetrisKeyAdapter myAdapter;
+    
+    /** Determines if the game has ended. */
+    private boolean myGameEnded;
+    
+    /** A music player to play music during game. */
+    private MusicPlayer myMusic;
+    
+    /**
+     * Initializes instance fields.
+     */
+    public TetrisFrame() {
+        musicSetup();
+        myRightPanel = new TetrisRightPanel();
+        myFrame = new JFrame("Tetris");
+        myTetris = new TetrisPanel();
+        myBoard = new Board();
+        myPauseLabel = new JLabel();
+        myMenu = new TetrisMenu(myFrame);
+        myAdapter = new TetrisKeyAdapter();
+    }
+    
+    /** Sets up the music player and songs. */
+    private void musicSetup() {
+        final File imperialMarch = new File("support_files/04-01- "
+                                        + "The Imperial March (Darth Vaders Theme).mp3");
+        final File yodasTheme = new File("support_files/04-02- Yodas Theme.mp3");
+        final File[] music = {imperialMarch, yodasTheme};
+        myMusic = new MusicPlayer();
+        myMusic.newList(music);
+    }
+    
+    /**
+     * Sets up the Tetris game.
+     */
+    public void start() {
+        myFrame.setResizable(false);
+        myFrame.setLayout(new GridLayout(ROW, COLUMN));
+        
+        setupPause();
+        myFrame.addKeyListener(myAdapter);
+        myBoard.addObserver(myTetris);
+        myBoard.addObserver(myRightPanel);
+        myBoard.addObserver(this);
+        myMenu.addObserver(this);
+        myMenu.addObserver(myTetris);
+        
+        myBoard.newGame(myBoard.getWidth(), myBoard.getHeight(), null);
+        myTimer = new Timer(DELAY, new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                myBoard.step();
+                
+            }
+        });
+        
+        myTimer.start();
+        myMusic.play();
+        myFrame.setIconImage(new ImageIcon("support_files/empire-logo.png").getImage());
+        
+        myFrame.add(myTetris);
+        myFrame.add(myRightPanel);
+        myTetris.setVisible(true);
+        
+        myFrame.pack();
+        myFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        myFrame.setLocationRelativeTo(null);
+        myFrame.setVisible(true);
+    }
+
+    /**
+     * Stops the timer on game over and displays message.
+     * {@inheritDoc}
+     */
+    @Override
+    public void update(final Observable theObservable, final Object theObject) {
+
+        if ("Board".equals(theObservable.getClass().getSimpleName())) {
+            final Board tetrisBoard = (Board) theObservable;
+            
+            if (!myMusic.isStarted()) {
+                myMusic.play();
+            }
+        
+            if (tetrisBoard.isGameOver()) {
+                JOptionPane.showMessageDialog(null, "Game Over!");
+                myGameEnded = true;
+                myTimer.stop();
+                myMusic.stopPlay();
+            }
+        
+            final int level = myRightPanel.getLevel();
+            if (level != DEFAULT) {
+                myTimer.setDelay(DELAY / myRightPanel.getLevel());
+            }
+        } else {
+            final String name = theObject.toString();
+            switch (name) {
+                case "NewGame" :
+                    if (myGameEnded) {
+                        myGameEnded = false;
+                        myBoard.newGame(myBoard.getWidth(), myBoard.getHeight(), null);
+                        myFrame.addKeyListener(myAdapter);
+                        myTimer.restart();
+                        musicSetup();
+                    }
+                    break;
+                case "EndGame" :
+                    myGameEnded = true;
+                    myTimer.stop();
+                    myMusic.stopPlay();
+                    myFrame.removeKeyListener(myAdapter);
+                    JOptionPane.showMessageDialog(null, "Game Ended!");
+                    break;
+                default :
+                    break;
+            }
+            
+        }
+    }
+    
+    /**
+     * Sets up the label that displays when the game is paused.
+     */
+    private void setupPause() {
+        myPauseLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, FONT_SIZE));
+        myPauseLabel.setForeground(Color.YELLOW);
+        myPauseLabel.setText("GAME PAUSED");
+        myPauseLabel.setVisible(false);
+        myTetris.add(myPauseLabel);
+    }
+    
+    /**
+     * The Listener the user uses to interact with the game.
+     * 
+     * @author Brandon Scholer
+     * @version 1.0
+     */
+    private class TetrisKeyAdapter extends KeyAdapter {
+        
+        /** Default for down. */
+        private static final int DOWN = KeyEvent.VK_DOWN;
+        
+        /** Default for move left. */
+        private static final int LEFT = KeyEvent.VK_LEFT;
+        
+        /** Default for move right. */
+        private static final int RIGHT = KeyEvent.VK_RIGHT;
+        
+        /** Default for rotate CW. */
+        private static final int ROTATE = KeyEvent.VK_UP;
+        
+        /** Default for hard down. */
+        private static final int HARD_DOWN = KeyEvent.VK_CONTROL;
+        
+        /** Default for Pause. */
+        private static final int PAUSE = KeyEvent.VK_SPACE;
+        
+        /** Determines Paused state. */
+        private boolean myPause;
+        
+        /**
+         * Initializes instance fields.
+         */
+        public TetrisKeyAdapter() {
+            super();
+            myPause = false;
+        }
+        
+        /**
+         * Determines what direction to move the piece based on user input.
+         * 
+         * @param theEvent The key the user pressed.
+         */
+        public void keyPressed(final KeyEvent theEvent) {
+
+            final int keyCode = theEvent.getKeyCode();
+            
+            if (!myPause) {
+                if (keyCode == DOWN) {
+                    myBoard.moveDown();
+                } else if (keyCode == LEFT) {
+                    myBoard.moveLeft();
+                } else if (keyCode == RIGHT) {
+                    myBoard.moveRight();
+                } else if (keyCode == ROTATE) {
+                    myBoard.rotateCW();
+                } else if (keyCode == HARD_DOWN) {
+                    myBoard.hardDrop();
+                }
+                    
+            }
+            
+            if (keyCode == PAUSE) {
+                if (myPause) {
+                    myPause = false;
+                    myTimer.start();
+                    myMusic.togglePause();
+                    myPauseLabel.setVisible(false);
+                } else {
+                    myPause = true;
+                    myTimer.stop();
+                    myMusic.togglePause();
+                    myPauseLabel.setVisible(true);
+            
+            
+                }
+            
+            
+            }
+                
+        }
+
+    }
+
+    
+}

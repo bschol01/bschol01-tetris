@@ -1,0 +1,193 @@
+/*
+ * TCSS 305 - Autumn 2014
+ * Assignment 6 - Tetris
+ */
+
+package view;
+
+import java.util.List;
+import java.util.Observable;
+import java.util.Observer;
+
+import model.AbstractPiece;
+import model.Block;
+import model.Board;
+import model.Piece;
+
+/**
+ * Class that calculates the score based on moves and lines cleared.
+ * 
+ * @author Brandon Scholer
+ * @version 1.0
+ *
+ */
+public class Score implements Observer {
+    
+    /** Default score of zero. */
+    private static final int DEFAULT_VALUE = 0;
+    
+    /** Default level. */
+    private static final int DEFAULT_LEVEL = 1;
+    
+    /** Two lines cleared. */
+    private static final int DOUBLE = 2;
+    
+    /** Three lines cleared. */
+    private static final int TRIPLE = 3;
+    
+    /** Four lines cleared. */
+    private static final int QUAD = 4;
+    
+    /** Basic points for moving down. */
+    private static final int DOWN_POINTS = 10;
+    
+    /** Number of blocks in two lines. */
+    private static final int TWO_LINES = 20;
+    
+    /** Number of blocks in three lines. */
+    private static final int THREE_LINES = 30;
+    
+    /** Number of blocks in four lines. */
+    private static final int FOUR_LINES = 40;
+    
+    /** Score for one line cleared. */
+    private static final int LINE_CLEAR = 100;
+    
+    /** Score for two lines cleared. */
+    private static final int TWO_CLEAR = 200;
+    
+    /** Score for three lines cleared. */
+    private static final int THREE_CLEAR = 400;
+    
+    /** Score for a tetris (four lines cleared). */
+    private static final int TETRIS = 800;
+    
+    /** Previous Y coordinate of current Piece. */
+    private int myY;
+    
+    /** Number of frozen blocks. */
+    private int myFrozenBlocksCount;
+    
+    /** Piece to be drawn on board. */
+    private Piece myPiece;
+    
+    /** Frozen Blocks on board.*/
+    private List<Block[]> myFrozenBlocks;
+    
+    /** Current score. */
+    private int myScore;
+    
+    /** Number of lines cleared. */
+    private int myLinesCleared;
+    
+    /** The current level. */
+    private int myLevel;
+    
+    /** An Adjustment used to determine the lines for next level. */
+    private int myLineAdjust;
+    
+    /**
+     * Initializes instance fields.
+     */
+    public Score() {
+        myScore = DEFAULT_VALUE;
+        myFrozenBlocksCount = DEFAULT_VALUE;
+        myLinesCleared = DEFAULT_VALUE;
+        myLineAdjust = TWO_LINES;
+    }
+    
+    /** Gets the current score.
+     * 
+     * @return The current score.
+     */
+    public int getScore() {
+        return myScore;
+    }
+    
+    /**
+     * Gets the number of Lines Cleared.
+     * 
+     * @return The current number of lines cleared.
+     */
+    public int getLinesCleared() {
+        return myLinesCleared;
+    }
+    
+    /**
+     * Gets the current level.
+     * 
+     * @return The current level.
+     */
+    public int getLevel() {
+        return myLevel;
+    }
+    
+    /**
+     * Gets the lines needed to achieve the next level.
+     * @return The lines until next level.
+     */
+    public int getNextLevel() {
+        return myLineAdjust;
+    }
+
+    /** Updates score based on the conditions of the board.
+     * {@inheritDoc}
+     */
+    @Override
+    public void update(final Observable theBoard, final Object theObject) {
+        
+        final Board tetrisBoard = (Board) theBoard;
+        final Piece currentPiece = tetrisBoard.getCurrentPiece();
+        
+        if (myPiece != null && myY > currentPiece.getY()) {
+            myScore += DOWN_POINTS;
+        }
+        
+        myY = currentPiece.getY();
+        myPiece = (AbstractPiece) currentPiece;
+        myFrozenBlocks = (List<Block[]>) tetrisBoard.getFrozenBlocks();
+        scoreSetup();
+        myFrozenBlocksCount = myFrozenBlocks.size();
+        
+    }
+    
+    /** Adjusts score for line clears. */
+    private void scoreSetup() {
+        final int size = myFrozenBlocks.size();
+        if (myFrozenBlocksCount == DEFAULT_VALUE || myFrozenBlocksCount <= size) {
+            myFrozenBlocksCount = size;
+        } else {
+            final int adjSize = myFrozenBlocksCount - size;
+                
+            switch (adjSize) {
+                case TWO_LINES :
+                    myScore += TWO_CLEAR;
+                    myLinesCleared += DOUBLE;
+                    myLineAdjust -= DOUBLE;
+                    break;
+                case THREE_LINES :
+                    myScore += THREE_CLEAR;
+                    myLinesCleared += TRIPLE;
+                    myLineAdjust -= TRIPLE;
+                    break;
+                case FOUR_LINES :
+                    myScore += TETRIS;
+                    myLinesCleared += QUAD;
+                    myLineAdjust -= QUAD;
+                    break;
+                default :
+                    myScore += LINE_CLEAR;
+                    myLinesCleared++;
+                    myLineAdjust--;
+                    break;
+            }
+            
+            myLevel = (myLinesCleared / TWO_LINES) + DEFAULT_LEVEL;
+            if (myLineAdjust == DEFAULT_VALUE) {
+                myLineAdjust = TWO_LINES;
+            }
+        }
+
+    }
+
+}
